@@ -297,9 +297,12 @@ def extract_type(article_node) :
     for subj_group_node in findall_attrib(article_node,'subj-group','subj-group-type','heading') :
         for subject_node in findall(subj_group_node,'subject') :
             #print("REINOS: Found TYPE info in subj-group-heading subject: " + subject_node.text)
-            if re.match("Poster Presentation|Editorial",subject_node.text) :
-                #print("REINOS: this does not look like a research article")
-                return 'Other'
+            try:
+                if re.match("Poster Presentation|Editorial",subject_node.text) :
+                    #print("REINOS: this does not look like a research article")
+                    return 'Other'
+            except:
+                pass
     return 'Journal Article'
 
 def extract_pmcid(article_node) :
