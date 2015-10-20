@@ -43,7 +43,7 @@ def main() :
     print("mkdir -p " + pmc_oai_dir + ";")
     print(osc_root + '/proj/ingest/bin/oai-harvest.py -u "' + pmc_oai_url + '" -d "' + pmc_oai_dir + '";')    
     print( pmc_proj_dir + "/bin/pmc2dash.py " + batch_id +";")
-    print("rsync -avz " + pmc_sip_dir + " dspace@bishop.hul.harvard.edu:/home/dspace/import/" + batch_id + "/;")
+    print("rsync -avz " + pmc_sip_dir + " dspace@turner.lib.harvard.edu:/home/dspace/import/" + batch_id + "/;")
 
 main()
 
