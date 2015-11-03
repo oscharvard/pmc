@@ -194,11 +194,13 @@ def findall_texts(node,tag) :
 
 
 def findall(node,tag):
-    return node.findall('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
+    #return node.findall('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
+    return node.findall('.//{http://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
 
 
 def find(node,tag):
-    return node.find('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
+    #return node.find('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
+    return node.find('.//{http://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
 
 
 def find_attrib(node,tag,key,value) :
@@ -297,9 +299,12 @@ def extract_type(article_node) :
     for subj_group_node in findall_attrib(article_node,'subj-group','subj-group-type','heading') :
         for subject_node in findall(subj_group_node,'subject') :
             #print("REINOS: Found TYPE info in subj-group-heading subject: " + subject_node.text)
-            if re.match("Poster Presentation|Editorial",subject_node.text) :
-                #print("REINOS: this does not look like a research article")
-                return 'Other'
+            try:
+                if re.match("Poster Presentation|Editorial",subject_node.text) :
+                    #print("REINOS: this does not look like a research article")
+                    return 'Other'
+            except:
+                pass
     return 'Journal Article'
 
 def extract_pmcid(article_node) :
@@ -377,7 +382,7 @@ def found_all_harvard_auths(article) :
     return True
 
 def attach_authorities(article) :
-    base_url = 'http://dash.harvard.edu/getBestMatch?format=json&'
+    base_url = 'https://dash.harvard.edu/getBestMatch?format=json&'
     #base_url = 'http://rand.hul.harvard.edu:9034/getBestMatch?format=json&'
     enc = urllib.parse.quote_plus
     harvard_author_count=0
@@ -515,7 +520,9 @@ def assign_article_schools(article,fas_depts) :
             if re.match(".*(harvard medical school|harvard university school of medicine|beth israel deaconess medical center|brigham and women\’s hospital|massachusetts general hospital).*",afftext) :
                 add_pmc_school(article,author,'HMS',afftext)
             elif re.match(".*harvard school of public health.*",afftext) :
-                add_pmc_school(article,author,'HSPH',afftext)
+                # does changing HSPH to SPH matter here?
+                #add_pmc_school(article,author,'HSPH',afftext)
+                add_pmc_school(article,author,'SPH',afftext)
             elif re.match(".*harvard graduate school of education.*",afftext) :
                 add_pmc_school(article,author,'GSE',afftext)
             elif re.match(".*harvard university.*",afftext) :
