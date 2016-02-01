@@ -37,7 +37,9 @@ def main() :
     pmc_proj_dir  = osc_root + "/proj/pmc"
     pmc_batch_dir = pmc_proj_dir + "/data/batch/" + batch_id
     pmc_oai_dir   = pmc_batch_dir + "/oai"
-    pmc_oai_url   = 'http://www.pubmedcentral.nih.gov/oai/oai.cgi?verb=ListRecords&metadataPrefix=pmc_fm&from=' + batch_start_date + '&until=' + batch_end_date + '&set=pmc-open#'
+    #pmc_oai_url   = 'http://www.pubmedcentral.nih.gov/oai/oai.cgi?verb=ListRecords&metadataPrefix=pmc_fm&from=' + batch_start_date + '&until=' + batch_end_date + '&set=pmc-open#'
+    # changed 2016-02-01, make sure this works -- we've been seeing 301s for a long time, they may have turned off the original route.
+    pmc_oai_url   = 'http://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=ListRecords&metadataPrefix=pmc_fm&from=' + batch_start_date + '&until=' + batch_end_date + '&set=pmc-open#'
     pmc_sip_dir   = pmc_batch_dir + "/import"
 
     print("mkdir -p " + pmc_oai_dir + ";")
