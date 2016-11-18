@@ -418,7 +418,7 @@ def attach_authorities(article) :
                     school_value += ","
                 school_value+=school
 
-        first = author.get('first', False):
+        first = author.get('first', False)
         if first:
             nameparts = author['first'].split(" ")
             first = nameparts[0]
