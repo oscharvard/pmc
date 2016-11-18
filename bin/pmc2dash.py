@@ -200,7 +200,7 @@ def findall(node,tag):
 
 def find(node,tag):
     #return node.find('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
-    return node.find('.//{http://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
+    return node.find('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
 
 
 def find_attrib(node,tag,key,value) :
