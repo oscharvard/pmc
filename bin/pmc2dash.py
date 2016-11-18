@@ -195,7 +195,7 @@ def findall_texts(node,tag) :
 
 def findall(node,tag):
     #return node.findall('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
-    return node.findall('.//{http://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
+    return node.findall('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
 
 
 def find(node,tag):
