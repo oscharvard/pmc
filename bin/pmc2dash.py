@@ -2,7 +2,7 @@
 
 # take pubmed central (pmc) batch.
 # read batch input files
-# for each harvard match, create a dc file 
+# for each harvard match, create a dc file
 # spit out to batch specific output directory.
 
 import glob
@@ -22,7 +22,7 @@ import bulklib
 sys.path.append(OSCROOT + '/common/lib/python3')
 import time
 import tsv
-import xml.etree.ElementTree as etree  
+import xml.etree.ElementTree as etree
 
 import urllib.request, urllib.parse, urllib.error
 
@@ -70,7 +70,7 @@ def main() :
                 update_harvard_article_counts(report,article)
                 in_dash = already_in_dash(article,dash_dois,dash_titles,dash_pmcids)
                 if not in_dash :
-                    target_collection_dir = get_target_collection_dir(article) 
+                    target_collection_dir = get_target_collection_dir(article)
                     print("REINOS: target_collection_dir: " + target_collection_dir)
                     if target_collection_dir == '' :
                         report['articles_error_no_valid_school'] +=1
@@ -95,7 +95,7 @@ def main() :
         os.mkdir(report_dir)
     print_report(report)
     write_author_report(report_dir)
-    
+
 
 def write_author_report(report_dir):
     pmcid2dashid = tsv.read_map(OSCROOT + '/proj/ingest/data/tsv/pmcid2dashid.tsv')
@@ -194,13 +194,13 @@ def findall_texts(node,tag) :
 
 
 def findall(node,tag):
-    #return node.findall('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
-    return node.findall('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
+    #return node.findall('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag)
+    return node.findall('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag)
 
 
 def find(node,tag):
-    #return node.find('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag) 
-    return node.find('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag) 
+    #return node.find('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag)
+    return node.find('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag)
 
 
 def find_attrib(node,tag,key,value) :
@@ -260,7 +260,7 @@ def extract_authors(article_node,affs) :
         settext(author,'last',find(author_node,'surname'))
         settext(author,'first',find(author_node,'given-names'))
         if len(affs) == 1 :
-            # there's just one possible aff. 
+            # there's just one possible aff.
             author['affs'] = affs
         else :
             # there are multiple possible affs.
@@ -279,7 +279,7 @@ def extract_authors(article_node,affs) :
         if 'last' in author :
             newAuthor = True
             for a in authors :
-                if a['last'] == author['last'] and a['first'] == author['first'] :
+                if a['last'] == author['last'] and a.get('first', False) == author.get('first', False) :
                     print("REINOS: WOAH: AUTHOR DUPLICATION ******************************************")
                     pprint(a)
                     pprint(author)
@@ -290,7 +290,7 @@ def extract_authors(article_node,affs) :
     return authors
 
 def settext(object,key,node) :
-    # find a better name for this. 
+    # find a better name for this.
     if node != None :
         if node.text != None :
             object[key]=node.text
@@ -313,7 +313,7 @@ def extract_pmcid(article_node) :
         # the way pmc represents pmc ids changed in May 2014 crawl (for April 2014 data).
         # used to be pub-id-type 'pmc', now 'pmcid'
         pmcid_node = find_attrib(article_node,'article-id','pub-id-type','pmcid')
-    # now pmcids have a PMC prefix. strip for consistency with previous data. 
+    # now pmcids have a PMC prefix. strip for consistency with previous data.
     # we may want to add this to previously loaded data if this is the new correct way to do this stuff.
     return re.sub("PMC","",pmcid_node.text)
 
@@ -389,7 +389,7 @@ def attach_authorities(article) :
     for author in article['authors'] :
         if author['has_harvard_affstring'] :
            harvard_author_count+=1
-    harvard_author_index=0    
+    harvard_author_index=0
     for author in article['authors'] :
         if not author['has_harvard_affstring'] :
             continue
@@ -402,7 +402,7 @@ def attach_authorities(article) :
         AR['harvard_author_count']=harvard_author_count
         AR['harvard_author_index']=harvard_author_index
         AR['all_authors']=len(article['authors'])
-        
+
         title_value=""
         afftexts=""
         for afftext in author['afftexts'] :
@@ -417,10 +417,14 @@ def attach_authorities(article) :
                 if school_value :
                     school_value += ","
                 school_value+=school
-        nameparts = author['first'].split(" ")
-        first = nameparts[0]
+
+        first = author.get('first', False):
+        if first:
+            nameparts = author['first'].split(" ")
+            first = nameparts[0]
+
         middle = ""
-        last = author['last'] #.split(" ")[-1] # hack von whatever. remove split. 
+        last = author['last'] #.split(" ")[-1] # hack von whatever. remove split.
         #last = re.sub("-","",last)# hack to test without hyphens breaking it.
         # match the pmc aff string, scrubbed of some stopwords, against the title field in ldap.
 
@@ -439,7 +443,7 @@ def attach_authorities(article) :
         if len(nameparts) > 1 :
             middle = nameparts[1]
         url = base_url + 'surname=' + enc(last) + '&givenname=' + enc(first) + "&school=" + enc(school_value) + "&title="+enc(title_value)
-        
+
         if middle :
             url+= "&middlename=" + enc(middle)
         dept_value = bulklib.findit("department of ([\w ]+)",afftexts)
@@ -559,13 +563,14 @@ def format_first(author,initialize) :
     # return authors first + middle name or first/middle initials.
     if initialize :
         first = ""
-        for part in author['first'].split(" ") :
-            try:
-                first += part[0]+". "
-            except:
-                pass
+        if 'first' in author:
+            for part in author['first'].split(" ") :
+                try:
+                    first += part[0]+". "
+                except:
+                    pass
         return first
-    else :
+    else:
         return author['first']
 
 def build_citation(article) :
@@ -578,7 +583,7 @@ def build_citation(article) :
         if len(article['authors']) >= 11 and i > 7 :
             citation+= "et al."
             break
-        if author['first'] == None :
+        if author.get('first', None) == None :
             # it's not a person, but a consortium or something -- no first name.
             citation+= author['last']
         elif i == 1 :
@@ -592,7 +597,7 @@ def build_citation(article) :
             citation+= format_first(author,et_al) + " "
             citation+= author['last'] + ", "
         i+=1
-    citation += ". " + article['date'] 
+    citation += ". " + article['date']
     #citation += ". " + article['title'][0] + article['title'][1:].lower() + ". "
     citation += ". “" + article['title'] + ".” "
 
@@ -610,7 +615,7 @@ def build_citation(article) :
         citation += " (" + article['issue'] + ")"
 
     # removing because inconsistent with dash crossref dates and can't see how they're getting them.
-    #if 'ppub_month' or 'ppub_day' in article : 
+    #if 'ppub_month' or 'ppub_day' in article :
     #    citation += " ("
     #    if 'ppub_month' in article :
     #        citation += article['ppub_month']
@@ -631,7 +636,7 @@ def build_citation(article) :
         pages = ""
 
     citation = citation.lstrip()
-    
+
     # question: how do elocation ids play with dois?
     if 'elocation-id' in article :
         print("REINOS: HOT DOG! sticking elocation-id into citation")
@@ -639,11 +644,11 @@ def build_citation(article) :
         # -- Emily Andersen
         citation += ":"
         if 'issue' in article :
-           citation += ' ' 
+           citation += ' '
         citation += article['elocation-id']
 
 
-    
+
     if 'doi' in article :
         citation += ". doi:" + article['doi']
         citation += ". http://dx.doi.org/" + article['doi']
@@ -668,7 +673,7 @@ def build_citation(article) :
 
     doi2citation['10.4081/hi.2011.e14']="Huffman, Jeff C., Carol A. Mastromauro, Julia K. Boehm, Rita Seabrook, Gregory L. Fricchione, John W. Denninger, and Sonja Lyubomirsky. 2011. “Development of a positive psychology intervention for patients with acute cardiovascular disease.” Heart International 6 (2): e14. doi:10.4081/hi.2011.e14. http://dx.doi.org/10.4081/hi.2011.e14."
 
-    if 'doi' in article and article['doi'] in doi2citation : 
+    if 'doi' in article and article['doi'] in doi2citation :
         c = doi2citation[article['doi']]
         if citation == c :
             print("REINOS_SUCCESS")
@@ -676,7 +681,7 @@ def build_citation(article) :
             print("REINOS_FAILURE")
             print("REINOS: Shouldbe: " +c)
             exit()
-    
+
 
     return citation
 
@@ -704,7 +709,7 @@ def extract_subjects(article_node) :
                 keyword = re.sub("^\(\d+\.\d+\)","",kwd_node.text)
                 #print("REINOS: clean keyword: " + keyword)
                 subjects.append(keyword)
-                
+
 
     return subjects
 
@@ -837,7 +842,7 @@ def download_files(article,batch):
 
 def write_output(batch,batch_out_dir,article,article_number) :
     #print("Batch: " + batch)
-    target_collection = get_target_collection_dir(article) 
+    target_collection = get_target_collection_dir(article)
     collection_out_dir = batch_out_dir + "/" + target_collection
     article_out_dir= collection_out_dir +"/"+str(article_number)
     if not os.path.exists(batch_out_dir) :
@@ -863,7 +868,3 @@ def prep_batch_out_dir(batch_out_dir) :
 
 
 main()
-
-
-
-
