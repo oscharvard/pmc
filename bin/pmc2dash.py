@@ -185,7 +185,7 @@ def findall(node,tag):
 
 
 def find(node,tag):
-    return node.find('.//article:{}'.format(tag), namespaces={'article': ARCTICLE_NS})
+    return node.find('.//article:{}'.format(tag), namespaces={'article': ARTICLE_NS})
 
 
 def find_attrib(node,tag,key,value) :
