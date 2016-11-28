@@ -56,7 +56,7 @@ def main():
     dash_titles = bulklib.load_dash_titles()
     dash_pmcids = bulklib.load_dash_pmcids()
 
-    for oai_file in glob.glob( os.path.join(basedir, "oai", '*.xml') ):
+    for oai_file in glob.glob( os.path.join(base_dir, "oai", '*.xml') ):
         print("current file is: " + oai_file)
         report['oai_pages']+=1
         tree = etree.parse(oai_file)
