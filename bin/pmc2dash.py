@@ -181,11 +181,11 @@ def findall_texts(node,tag) :
     return [subnode.text for subnode in findall(node, tag)]
 
 def findall(node,tag):
-    return node.findall('.//article:{}'.format(tag), namespaces=ARTICLE_NS)
+    return node.findall('.//article:{}'.format(tag), namespaces={'article': ARTICLE_NS})
 
 
 def find(node,tag):
-    return node.find('.//article:{}'.format(tag), namespaces=ARCTICLE_NS)
+    return node.find('.//article:{}'.format(tag), namespaces={'article': ARCTICLE_NS})
 
 
 def find_attrib(node,tag,key,value) :
