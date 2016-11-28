@@ -5,26 +5,17 @@
 # for each harvard match, create a dc file
 # spit out to batch specific output directory.
 
-import glob
-import json
-import os
+import sys, os
+
 OSCROOT=os.environ['OSCROOT'] #/home/osc
 
-from pprint import pprint
-
-import json
-import random
-import re
-import shutil
-import sys
 sys.path.append(OSCROOT + '/proj/ingest/lib')
-import bulklib
 sys.path.append(OSCROOT + '/common/lib/python3')
-import time
-import tsv
-import xml.etree.ElementTree as etree
 
+import argparse, glob, json, random, re, shutil, bulklib, time, tsv
 import urllib.request, urllib.parse, urllib.error
+from pprint import pprint
+import xml.etree.ElementTree as etree
 
 AUTHORITY_REPORT=[]
 
@@ -35,29 +26,48 @@ UNAFFILIATED = 'UNAFFILIATED'
 DASH2LDAP_SCHOOL = bulklib.load_dash2ldap_school()
 LDAP2DASH_SCHOOL = {v:k for k, v in DASH2LDAP_SCHOOL.items()}
 
-def main() :
-    batch = sys.argv[1]
+OAI_NS = None
+ARTICLE_NS = None
+
+def main():
+    parser = argparse.ArgumentParser(description='''Processor for pubmed central (pmc) batch.
+    1. read batch input files
+    2. for each Harvard match, create a dc file
+    3. spit out to batch specific output directory.''')
+    parser.add_argument('batch', metavar='BATCH', help='name of the base directory for the batch')
+    args = parser.parse_args()
+    batch = args.batch
+
     print("Processing batch: " + batch)
-    batch_oai = DATA_DIR + "/batch/"+batch+"/oai"
-    print("Batch input oai dir: " + batch_oai)
-    batch_out_dir =  DATA_DIR+"/batch/"+batch+"/import"
-    report_dir =  DATA_DIR+"/batch/"+batch+"/report"
+
+    base_dir = "{}/batch/{}".format(DATA_DIR, batch)
+    print("Base Directory: " + BASEDIR)
+
+    batch_out_dir = base_dir + "/import"
+    report_dir =    base_dir + "/report"
+
     prep_batch_out_dir(batch_out_dir)
-    article_number=0
-    report=init_report(batch)
+
+    article_number = 0
+    report = init_report(batch)
 
     fas_depts   = bulklib.load_fas_departments()
     dash_dois   = bulklib.load_dash_dois()
     dash_titles = bulklib.load_dash_titles()
     dash_pmcids = bulklib.load_dash_pmcids()
 
-    for oai_file in glob.glob( os.path.join(batch_oai, '*.xml') ):
+    for oai_file in glob.glob( os.path.join(basedir, "oai", '*.xml') ):
         print("current file is: " + oai_file)
         report['oai_pages']+=1
         tree = etree.parse(oai_file)
-        root = tree.getroot()
 
-        for article_node in tree.findall('.//{http://www.openarchives.org/OAI/2.0/}metadata') :
+        # Get default namespaces out of the document - we've had issues with the article NS switching from HTTP to HTTPS
+        if not OAI_NS:
+            global OAI_NS = dict(tree.xpath('/*/namespace::*')).get(None, 'http://www.openarchives.org/OAI/2.0/')
+        if not ARTICLE_NS:
+            global ARTICLE_NS = dict(tree.xpath('//*[local-name(.) = "article"]/namespace::*')).get(None, 'https://jats.nlm.nih.gov/ns/archiving/1.0/')
+
+        for article_node in tree.findall('.//{{{}}}metadata'.format(OAI_NS)):
             report['articles_total']+=1
             if is_harvard_article_node(etree,article_node) :
                 report['articles_harvard']+=1
@@ -96,7 +106,6 @@ def main() :
     print_report(report)
     write_author_report(report_dir)
 
-
 def write_author_report(report_dir):
     pmcid2dashid = tsv.read_map(OSCROOT + '/proj/ingest/data/tsv/pmcid2dashid.tsv')
     jsondata={}
@@ -130,10 +139,8 @@ def write_author_report(report_dir):
         jsonrow.append(la['label'])
         jsonrow.append(la['confidence'])
         jsondata['data'].append(jsonrow)
-    f = open(report_dir+"/author-report.json", "wb")
-    f.write(bytes(json.dumps(jsondata), 'UTF-8'))
-    f.close()
-
+    with open(report_dir+"/author-report.json", "wb") as f:
+        f.write(bytes(json.dumps(jsondata), 'UTF-8'))
 
 def update_harvard_article_counts(report,article):
     if article['found_all_harvard_auths'] :
@@ -154,53 +161,29 @@ def update_harvard_author_counts(report,author) :
     elif author['match_count'] > 1 :
        report['harvard_authors_multiple_matches_count']+=1
 
-def init_report(batch) :
-    report={}
-    report['batch']=batch
-    report['oai_pages']=0
-    report['articles_total']=0
-    report['articles_harvard']=0
-    report['articles_error_no_valid_school']=0
-    report['articles_error_no_files']=0
-    report['articles_already_in_dash']=0
-    report['articles_loaded']=0
-    report['found_all_harvard_auths']=0
-    report['found_any_harvard_auths']=0
-    report['found_no_harvard_auths']=0
-    report['harvard_authors_count']=0 # aff string says harvard.
-    report['harvard_authors_single_match_count']=0
-    report['harvard_authors_matched_count']=0
-    report['harvard_authors_multiple_matches_count']=0
-    report['harvard_authors_no_matches_count']=0
+def init_report(batch):
+    report = {key:0 for key in  (
+        'oai_pages', 'oai_pages', 'articles_total', 'articles_harvard', 'articles_error_no_valid_school', 'articles_error_no_files',
+        'articles_already_in_dash', 'articles_loaded', 'found_all_harvard_auths', 'found_any_harvard_auths', 'found_no_harvard_auths',
+        'harvard_authors_single_match_count', 'harvard_authors_matched_count', 'harvard_authors_multiple_matches_count', 'harvard_authors_no_matches_count',
+        'harvard_authors_count', # aff string says harvard.
+    )}
+    report['batch'] = batch
     return report
 
-def print_report(report) :
-    for key in sorted(report.keys()) :
+def print_report(report):
+    for key in sorted(report.keys()):
         print(key+": " + str(report[key]))
 
-
-def kvor(dict,key,default):
-    if key in dict :
-        if dict[key] != None :
-            return dict[key]
-    return default
-
-
 def findall_texts(node,tag) :
-    texts = []
-    for subnode in findall(node,tag) :
-        texts.append(subnode.text)
-    return texts
-
+    return [subnode.text for subnode in findall(node, tag)]
 
 def findall(node,tag):
-    #return node.findall('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag)
-    return node.findall('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag)
+    return node.findall('.//article:{}'.format(tag), namespaces=ARTICLE_NS)
 
 
 def find(node,tag):
-    #return node.find('.//{http://dtd.nlm.nih.gov/2.0/xsd/archivearticle}'+tag)
-    return node.find('.//{https://jats.nlm.nih.gov/ns/archiving/1.0/}'+tag)
+    return node.find('.//article:{}'.format(tag), namespaces=ARCTICLE_NS)
 
 
 def find_attrib(node,tag,key,value) :
@@ -233,7 +216,7 @@ def extract_affs(article_node):
     affs = []
     for aff_node in findall(article_node,'aff') :
         aff = {}
-        aff['id']= kvor(aff_node.attrib,'id',None)
+        aff['id']= aff_node.attrib.get('id',None)
         settext(aff,'sup',find(aff_node,'sup'))
         aff['text']= catnode(aff_node)
         affs.append(aff)
@@ -824,15 +807,15 @@ def download_files(article,batch):
         request.add_header('User-Agent','Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_3; en-US) AppleWebKit/534.3 (KHTML, like Gecko) Chrome/6.0.472.53 Safari/534.3')
         try :
             f = urllib.request.urlopen(request)
-            local_file = open(file['cachepath'], "wb")
-            local_file.write(f.read())
-            local_file.close()
+            with open(file['cachepath'], "wb") as local_file:
+                local_file.write(f.read())
+
         except urllib.error.URLError as e:
-            local_file = open(errorpath, "w")
-            local_file.write('Error getting url:\n'+file['url'])
-            local_file.write('Code: ' + str(e.code))
-            local_file.write('Read: ' + str(e.read))
-            local_file.close()
+            with open(errorpath, "w") as local_file:
+                local_file.write('Error getting url:\n'+file['url'])
+                local_file.write('Code: ' + str(e.code))
+                local_file.write('Read: ' + str(e.read))
+
         time.sleep(random.randint(3, 6))
     if os.path.exists(file['cachepath']) :
         article['files'].append(file)
