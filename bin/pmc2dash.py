@@ -62,10 +62,12 @@ def main():
         tree = etree.parse(oai_file)
 
         # Get default namespaces out of the document - we've had issues with the article NS switching from HTTP to HTTPS
+        global OAI_NS, ARTICLE_NS
+
         if not OAI_NS:
-            global OAI_NS = dict(tree.xpath('/*/namespace::*')).get(None, 'http://www.openarchives.org/OAI/2.0/')
+            OAI_NS = dict(tree.xpath('/*/namespace::*')).get(None, 'http://www.openarchives.org/OAI/2.0/')
         if not ARTICLE_NS:
-            global ARTICLE_NS = dict(tree.xpath('//*[local-name(.) = "article"]/namespace::*')).get(None, 'https://jats.nlm.nih.gov/ns/archiving/1.0/')
+            ARTICLE_NS = dict(tree.xpath('//*[local-name(.) = "article"]/namespace::*')).get(None, 'https://jats.nlm.nih.gov/ns/archiving/1.0/')
 
         for article_node in tree.findall('.//{{{}}}metadata'.format(OAI_NS)):
             report['articles_total']+=1
