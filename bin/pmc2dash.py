@@ -206,7 +206,7 @@ def is_harvard_article_node(etree,article_node) :
     # quick preliminary screen: does this article node have a harvard affiliated contributor?
     # note: does not weed out editors.
     for aff_node in findall(article_node,'aff') :
-        affBytes = etree.tostring(aff_node,"utf-8")
+        affBytes = etree.tostring(aff_node, encoding="utf-8")
         affString = str(affBytes)
         if re.search("harvard",affString.lower().replace("harvard\.edu","").replace("harvard ave","")) :
             print(affString)
