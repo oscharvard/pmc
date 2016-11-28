@@ -15,7 +15,7 @@ sys.path.append(OSCROOT + '/common/lib/python3')
 import argparse, glob, json, random, re, shutil, bulklib, time, tsv
 import urllib.request, urllib.parse, urllib.error
 from pprint import pprint
-import xml.etree.ElementTree as etree
+from lxml import etree
 
 AUTHORITY_REPORT=[]
 
@@ -60,14 +60,14 @@ def main():
         print("current file is: " + oai_file)
         report['oai_pages']+=1
         tree = etree.parse(oai_file)
-        root = tree.getroot()
+
         # Get default namespaces out of the document - we've had issues with the article NS switching from HTTP to HTTPS
         global OAI_NS, ARTICLE_NS
 
         if not OAI_NS:
-            OAI_NS = dict(root.xpath('/*/namespace::*')).get(None, 'http://www.openarchives.org/OAI/2.0/')
+            OAI_NS = dict(tree.xpath('/*/namespace::*')).get(None, 'http://www.openarchives.org/OAI/2.0/')
         if not ARTICLE_NS:
-            ARTICLE_NS = dict(root.xpath('//*[local-name(.) = "article"]/namespace::*')).get(None, 'https://jats.nlm.nih.gov/ns/archiving/1.0/')
+            ARTICLE_NS = dict(tree.xpath('//*[local-name(.) = "article"]/namespace::*')).get(None, 'https://jats.nlm.nih.gov/ns/archiving/1.0/')
 
         for article_node in tree.findall('.//{{{}}}metadata'.format(OAI_NS)):
             report['articles_total']+=1

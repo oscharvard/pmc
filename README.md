@@ -9,3 +9,6 @@ When they're at home, these scripts live in the ~/proj/pmc/bin directory of the 
 - *pmc2dash.py* - takes the input from the oai-pmh harvest, and for each harvard match, create a dc file in batch output dir
 
 Note that there are commands not in this repo that are part of batch creation.
+
+## Requirements
+These scripts require python3 and lxml
