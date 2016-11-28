@@ -41,7 +41,7 @@ def main():
     print("Processing batch: " + batch)
 
     base_dir = "{}/batch/{}".format(DATA_DIR, batch)
-    print("Base Directory: " + BASEDIR)
+    print("Base Directory: " + base_dir)
 
     batch_out_dir = base_dir + "/import"
     report_dir =    base_dir + "/report"
