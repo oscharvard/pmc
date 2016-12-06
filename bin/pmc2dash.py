@@ -518,7 +518,7 @@ def format_first(author,initialize = False) :
     if initialize:
         first = ""
         if 'first' in author:
-            return " ".join(part[0:1] + "." for part in author['first'].split(" "))
+            return " ".join(part[0:1] + "." for part in author['first'].split(" ") if part[0:1])
     else:
         return author['first']
 
