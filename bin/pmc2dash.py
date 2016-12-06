@@ -400,11 +400,8 @@ def attach_authorities(article):
         print("REINOS: title_value: " + title_value)
         if len(nameparts) > 1 :
             middle = nameparts[1]
-        url = "{base_url}surname={last}&givenname={first}&school={school}&title={title}".format(base_url=base_url,
-                                                                                                last=enc(last),
-                                                                                                first=enc(first),
-                                                                                                school=enc(school_value),
-                                                                                                title=enc(title_value))
+        url = "{base_url}surname={last}&givenname={first}&school={school}&title={title}".format(
+            base_url = base_url, last = enc(last), first = enc(first), school = enc(school_value), title = enc(title_value))
 
         if middle:
             url+= "&middlename=" + enc(middle)
