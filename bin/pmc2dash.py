@@ -121,16 +121,16 @@ def write_author_report(report_dir):
 
         dashid=""
         if AR['pmcid'] in pmcid2dashid :
-            dashid = '<a href="' + pmcid2dashid[AR['pmcid']] + '">' + pmcid2dashid[AR['pmcid']] + "</a>"
+            dashid = '<a href="{0}">{0}</a>'.format(pmcid2dashid[AR['pmcid']])
         if 'best_match_author' in AR :
             la = AR['best_match_author']
-        jsonrow = ('<a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC'+AR['pmcid']+'">'+AR['pmcid']+"</a>",
+        jsonrow = ('<a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC{0}">{0}</a>'.format(AR['pmcid']),
                    dashid,
                    AR['title'],
                    pa['first'],
                    pa['last'],
                    affstring,
-                   '<a href="' + AR['json_url'] + '">'+str(len(AR['ldap_authors']))+"</a>",
+                   '<a href="{}">{}</a>'.format(AR['json_url'], len(AR['ldap_authors'])),
                    la['label'],
                    la['confidence'],)
         jsondata['data'].append(jsonrow)
@@ -400,7 +400,11 @@ def attach_authorities(article):
         print("REINOS: title_value: " + title_value)
         if len(nameparts) > 1 :
             middle = nameparts[1]
-        url = base_url + 'surname=' + enc(last) + '&givenname=' + enc(first) + "&school=" + enc(school_value) + "&title="+enc(title_value)
+        url = "{base_url}surname={last}&givenname={first}&school={school}&title={title}".format(base_url=base_url,
+                                                                                                last=enc(last),
+                                                                                                first=enc(first),
+                                                                                                school=enc(school_value),
+                                                                                                title=enc(title_value))
 
         if middle:
             url+= "&middlename=" + enc(middle)
