@@ -72,7 +72,7 @@ def main():
         for article_node in tree.findall('.//{{{}}}metadata'.format(OAI_NS)):
             report['articles_total']+=1
             if is_harvard_article_node(etree,article_node) :
-                report['articles_harvard']+=1
+                report['articles_harvard'] += 1
                 article = extract_article(article_node)
                 assign_article_schools(article,fas_depts)
                 attach_authorities(article)
@@ -85,7 +85,7 @@ def main():
                     target_collection_dir = get_target_collection_dir(article)
                     print("REINOS: target_collection_dir: " + target_collection_dir)
                     if target_collection_dir == '' :
-                        report['articles_error_no_valid_school'] +=1
+                        report['articles_error_no_valid_school'] += 1
                         print("REINOS: no valid LDAP or PMC school!")
                         print("REINOS: LDAP schools:"+str(article['ldap_schools']))
                         print("REINOS: PMC schools:"+str(article['pmc_schools']))
@@ -94,14 +94,14 @@ def main():
                         if len(article['files']) > 0 :
                             # create dspace import packages for stuff that we were able to find harvard authority codes for.
                             # and has files and is not already in dash.
-                            set_license(article)
+                            article['license'] = 'LAA' # as of Feb 2014 per Colin and Becky, license always == LAA
                             write_output(batch,batch_out_dir,article, article_number)
-                            article_number +=1
-                            report['articles_loaded']+=1
+                            article_number += 1
+                            report['articles_loaded']+= 1
                         else :
-                            report['articles_error_no_files']+=1
+                            report['articles_error_no_files']+= 1
                 else :
-                    report['articles_already_in_dash']+=1
+                    report['articles_already_in_dash']+= 1
 
     if not os.path.exists(report_dir) :
         os.mkdir(report_dir)
@@ -115,55 +115,49 @@ def write_author_report(report_dir):
     jsondata['timestamp']='2014-02-20 19:36:32'
     for AR in AUTHORITY_REPORT :
         pa = AR['pmc_author']
-        affstring = ""
-        if 'affs' in pa :
-            for aff in pa['affs'] :
-                affstring+=aff['text']+"|"
-        affstring = re.sub("\|$","",affstring)
-        ldap_authors_string=""
+        affstring = "|".join(aff['text'] for aff in pa.get('affs', []))
+
         la={'label':'NO MATCH', 'confidence' : 0.0}
-        json_url = AR['json_url']
-        title = AR['title']
-        pmcid = AR['pmcid']
+
         dashid=""
-        if pmcid in pmcid2dashid :
-            dashid = '<a href="' + pmcid2dashid[pmcid] + '">' + pmcid2dashid[pmcid] + "</a>"
+        if AR['pmcid'] in pmcid2dashid :
+            dashid = '<a href="' + pmcid2dashid[AR['pmcid']] + '">' + pmcid2dashid[AR['pmcid']] + "</a>"
         if 'best_match_author' in AR :
             la = AR['best_match_author']
-        jsonrow = []
-        jsonrow.append('<a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC'+pmcid+'">'+pmcid+"</a>")
-        jsonrow.append(dashid)
-        jsonrow.append(title)
-        jsonrow.append(pa['first'])
-        jsonrow.append(pa['last'])
-        jsonrow.append(affstring)
-        jsonrow.append('<a href="' + json_url + '">'+str(len(AR['ldap_authors']))+"</a>")
-        jsonrow.append(la['label'])
-        jsonrow.append(la['confidence'])
+        jsonrow = ('<a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC'+AR['pmcid']+'">'+AR['pmcid']+"</a>",
+                   dashid,
+                   AR['title'],
+                   pa['first'],
+                   pa['last'],
+                   affstring,
+                   '<a href="' + AR['json_url'] + '">'+str(len(AR['ldap_authors']))+"</a>",
+                   la['label'],
+                   la['confidence'],)
         jsondata['data'].append(jsonrow)
     with open(report_dir+"/author-report.json", "wb") as f:
         f.write(bytes(json.dumps(jsondata), 'UTF-8'))
 
 def update_harvard_article_counts(report,article):
-    if article['found_all_harvard_auths'] :
-        report['found_all_harvard_auths']+=1
-    if article['found_any_harvard_auths'] :
-        report['found_any_harvard_auths']+=1
-    else :
-        report['found_no_harvard_auths']+=1
+    if article['found_all_harvard_auths']:
+        report['found_all_harvard_auths'] += 1
+    if article['found_any_harvard_auths']:
+        report['found_any_harvard_auths'] += 1
+    else:
+        report['found_no_harvard_auths'] += 1
 
-def update_harvard_author_counts(report,author) :
-    report['harvard_authors_count']+=1
-    if author['authority'] != UNAFFILIATED :
-        report['harvard_authors_matched_count'] +=1
-    if author['match_count'] == 0 :
-       report['harvard_authors_no_matches_count']+=1
-    elif author['match_count']==1 :
-       report['harvard_authors_single_match_count']+=1
-    elif author['match_count'] > 1 :
-       report['harvard_authors_multiple_matches_count']+=1
+def update_harvard_author_counts(report,author):
+    report['harvard_authors_count'] += 1
+    if author['authority'] != UNAFFILIATED:
+        report['harvard_authors_matched_count'] += 1
+    if author['match_count'] == 0:
+       report['harvard_authors_no_matches_count'] += 1
+    elif author['match_count']==1:
+       report['harvard_authors_single_match_count'] += 1
+    elif author['match_count'] > 1:
+       report['harvard_authors_multiple_matches_count'] += 1
 
 def init_report(batch):
+    '''Initialize and return report dict with zeroes and batch name.'''
     report = {key:0 for key in  (
         'oai_pages', 'oai_pages', 'articles_total', 'articles_harvard', 'articles_error_no_valid_school', 'articles_error_no_files',
         'articles_already_in_dash', 'articles_loaded', 'found_all_harvard_auths', 'found_any_harvard_auths', 'found_no_harvard_auths',
@@ -177,8 +171,6 @@ def print_report(report):
     for key in sorted(report.keys()):
         print(key+": " + str(report[key]))
 
-def findall_texts(node,tag) :
-    return [subnode.text for subnode in findall(node, tag)]
 
 def findall(node,tag):
     return node.findall('.//article:{}'.format(tag), namespaces={'article': ARTICLE_NS})
@@ -202,13 +194,13 @@ def findall_attrib(node,tag,key,value) :
     return foundnodes
 
 
-def is_harvard_article_node(etree,article_node) :
+def is_harvard_article_node(etree,article_node):
     # quick preliminary screen: does this article node have a harvard affiliated contributor?
     # note: does not weed out editors.
-    for aff_node in findall(article_node,'aff') :
-        affBytes = etree.tostring(aff_node, encoding="utf-8")
-        affString = str(affBytes)
-        if re.search("harvard",affString.lower().replace("harvard\.edu","").replace("harvard ave","")) :
+    for aff_node in findall(article_node,'aff'):
+        affString = str(etree.tostring(aff_node, encoding="utf-8"))
+
+        if re.search("harvard",affString.lower().replace("harvard\.edu","").replace("harvard ave","")):
             print(affString)
             return True
     return False
@@ -226,28 +218,27 @@ def extract_affs(article_node):
 
 
 def extract_aff_ids(author_node) :
-    rids = []
-    for xref_node in findall_attrib(author_node,"xref","ref-type","aff") :
-        rids.append(xref_node.attrib['rid'])
-    return rids
+    '''Extract aff_ids from xrefs within author node.'''
+    return [xref_node.attrib['rid'] for xref_node in findall_attrib(author_node,"xref","ref-type","aff")]
 
 
-def extract_authors(article_node,affs) :
+def extract_authors(article_node,affs):
     authors = []
     #contrib contrib-type="author"
     # we filter out editors here.
     for author_node in findall_attrib(article_node,'contrib','contrib-type','author') :
-        author = {}
-        author['has_harvard_affstring']= False
-        author['authority'] = UNAFFILIATED
-        author['match_count'] = 0
-        author['ldap_schools'] = set()
-        settext(author,'last',find(author_node,'surname'))
-        settext(author,'first',find(author_node,'given-names'))
-        if len(affs) == 1 :
+        author = {'has_harvard_affstring': False,
+                  'authority': UNAFFILIATED,
+                  'match_count': 0,
+                  'ldap_schools': set()}
+
+        settext(author, 'last',  find(author_node,'surname'))
+        settext(author, 'first', find(author_node,'given-names'))
+
+        if len(affs) == 1:
             # there's just one possible aff.
             author['affs'] = affs
-        else :
+        else:
             # there are multiple possible affs.
             author['affs']=[]
             author['aff_ids']=extract_aff_ids(author_node)
@@ -255,12 +246,11 @@ def extract_authors(article_node,affs) :
                 for aff_id in author['aff_ids'] :
                     if aff_id == aff['id'] :
                         author['affs'].append(aff)
-        if len(author['affs']) == 0 :
-            print("UNABLE TO EXTRACT AFF INFO FROM AUTHOR:")
-            print(author)
-            print("AFFS: ")
-            print(affs)
-            print("I think that's OK. As long as one of the article authors has an affiation.")
+        if len(author['affs']) == 0:
+            # I think that's OK. As long as one of the article authors has an affiation. - Ben
+            print("UNABLE TO EXTRACT AFF INFO FROM AUTHOR: {}".format(author))
+            print("AFFS: {}".format(affs))
+
         if 'last' in author :
             newAuthor = True
             for a in authors :
@@ -274,7 +264,7 @@ def extract_authors(article_node,affs) :
                 authors.append(author)
     return authors
 
-def settext(object,key,node) :
+def settext(object,key,node):
     # find a better name for this.
     if node != None :
         if node.text != None :
@@ -292,116 +282,99 @@ def extract_type(article_node) :
                 pass
     return 'Journal Article'
 
-def extract_pmcid(article_node) :
-    pmcid_node = find_attrib(article_node,'article-id','pub-id-type','pmc')
-    if pmcid_node == None :
-        # the way pmc represents pmc ids changed in May 2014 crawl (for April 2014 data).
-        # used to be pub-id-type 'pmc', now 'pmcid'
-        pmcid_node = find_attrib(article_node,'article-id','pub-id-type','pmcid')
-    # now pmcids have a PMC prefix. strip for consistency with previous data.
-    # we may want to add this to previously loaded data if this is the new correct way to do this stuff.
-    return re.sub("PMC","",pmcid_node.text)
+def extract_pmcid(article_node):
+    '''Get pmc id from article.
+
+    Note: Location and formatting of PMCID in document has changed several times.'''
+    return find_attrib(article_node,'article-id','pub-id-type','pmc-uid').text
 
 def extract_article(article_node) :
-    # take pmc xml article node and create simplified article object.
-    article = {}
-    pmcid = None
-    article['found_all_harvard_auths']=False
-    article['found_any_harvard_auths']=False
-    article['title']=catnode(find(article_node,'article-title')) #.text or "Untitled"
+    '''Take pmc xml article node and create simplified article object.'''
+    article = {'found_all_harvard_auths': False,
+               'found_any_harvard_auths': False,
+               'title':           catnode(find(article_node,'article-title')), #.text or "Untitled"
+               'journal':         find(article_node,'journal-title').text,
+               'type':            extract_type(article_node),
+               'pmcid':           extract_pmcid(article_node),
+               'files':           [],
+               'issn':            find(article_node,'issn').text,
+               'subjects':        extract_subjects(article_node),
+               'abstract':        extract_abstract(article_node),
+               'affs':            extract_affs(article_node),
+               'version':         'Version of Record',
+               'ldap_schools':    set(),
+               'pmc_schools':     set(),
+               'pmc_depts':       set(),
+               'harvard_authors': [],
+    }
     print("REINOS: title: " + article['title'])
+
     subtitle_node = find(article_node,'subtitle')
     if subtitle_node is not None:
         print("FOUND SUBTITLE!")
         article['title'] += ": " + catnode(subtitle_node)
     else :
         print("Did NOT find subtitle!")
-    article['journal']=find(article_node,'journal-title').text
-    article['type']= extract_type(article_node)
-    article['pmcid']=extract_pmcid(article_node)
+
+    article['authors'] = extract_authors(article_node,article['affs'])
+
     settext(article,'doi',find_attrib(article_node,'article-id','pub-id-type','doi'))
-    if 'doi' in article :
-        print("REINOS: DOI: " + article['doi'])
-    article['files']=[]
-    article['issn']=find(article_node,'issn').text
-    #article['subjects']=findall_texts(article_node,'subject')
-    article['subjects']=extract_subjects(article_node)
     settext(article,'publisher',find(article_node,'publisher-name'))
-    article['abstract']=extract_abstract(article_node)
-    settext(article,'date',find(article_node,'copyright-year'))
-    if 'date' not in article :
-        article['date']=find(article_node,'year').text
+
     for key in ( 'volume','issue','fpage','lpage','elocation-id' ) :
         settext(article,key,find(article_node,key))
-    # reinos: if there is a print publication date, use the day and month if available for citation building.
-    # reinos: removing this because it never matches with crossref stuff DASH is using.
-    #pubdate_node = find(article_node,'pub-date')
-    #if pubdate_node is not None and 'pub-type' in pubdate_node.attrib and pubdate_node.attrib['pub-type'] == 'ppub' :
-    #    print("REINOS! FOUND PPUB!")
-    #    settext(article,'ppub_month',find(pubdate_node,'month'))
-    #    if 'ppub_month' in article :
-    #        article['ppub_month'] = MONTHS[int(article['ppub_month'])-1]
-    #    settext(article,'ppub_day', find(pubdate_node,'day'))
-    article['affs']=extract_affs(article_node)
-    article['authors']=extract_authors(article_node,article['affs'])
-    article['harvard_authors']=[]
+
+    settext(article,'date',find(article_node,'copyright-year'))
+    if 'date' not in article:
+        article['date'] = find(article_node,'year').text
+
     article['citation']=build_citation(article)
-    article['version'] = 'Version of Record'
-    article['ldap_schools']= set()
-    article['pmc_schools']=set()
-    article['pmc_depts']=set()
     return article
 
 
-def found_any_harvard_auths(article) :
-    for author in article['authors'] :
-        if author['has_harvard_affstring'] and author['authority'] != UNAFFILIATED :
-            return True
-    return False
+def found_any_harvard_auths(article):
+    return any(author for author in article['authors'] if author['has_harvard_affstring'] and author['authority'] != UNAFFILIATED)
 
-def found_all_harvard_auths(article) :
+def found_all_harvard_auths(article):
     for author in article['authors'] :
-        if author['has_harvard_affstring'] :
-            if author['authority'] == UNAFFILIATED :
+        if author['has_harvard_affstring']:
+            if author['authority'] == UNAFFILIATED:
                 return False
     return True
 
-def attach_authorities(article) :
+def attach_authorities(article):
     base_url = 'https://dash.harvard.edu/getBestMatch?format=json&'
-    #base_url = 'http://rand.hul.harvard.edu:9034/getBestMatch?format=json&'
+
     enc = urllib.parse.quote_plus
     harvard_author_count=0
-    for author in article['authors'] :
-        if author['has_harvard_affstring'] :
+    for author in article['authors']:
+        if author['has_harvard_affstring']:
            harvard_author_count+=1
     harvard_author_index=0
-    for author in article['authors'] :
-        if not author['has_harvard_affstring'] :
+    for author in article['authors']:
+        if not author['has_harvard_affstring']:
             continue
-        school_value = ""
-        harvard_author_index+=1
-        AR={}
+
+        harvard_author_index += 1
+        AR={ 'title': article['title'],
+             'pmcid': article['pmcid'],
+             'harvard_author_count': harvard_author_count,
+             'harvard_author_index': harvard_author_index,
+             'all_authors': len(article['authors']),
+             'pmc_author': author
+        }
         AUTHORITY_REPORT.append(AR)
-        AR['title']=article['title']
-        AR['pmcid']=article['pmcid']
-        AR['harvard_author_count']=harvard_author_count
-        AR['harvard_author_index']=harvard_author_index
-        AR['all_authors']=len(article['authors'])
 
         title_value=""
         afftexts=""
-        for afftext in author['afftexts'] :
+        for afftext in author['afftexts']:
             print("REINOS: afftext: " + afftext)
             afftext = re.sub('^[ß1234567890]','',afftext)
             afftexts+=afftext
             title_value+=afftext
-        AR['pmc_author']=author
 
-        for school in author['pmc_schools'] :
-            if school :
-                if school_value :
-                    school_value += ","
-                school_value+=school
+
+        school_value = ",".join(author['pmc_schools'])
 
         first = author.get('first', False)
         if first:
@@ -421,7 +394,7 @@ def attach_authorities(article) :
         title_value = re.sub("broad institute of harvard and massachusetts institute of technology", "",title_value)
         title_value = re.sub("broad institute of harvard", "",title_value)
         title_value = re.sub("massachusetts institute of technology", "",title_value)
-        title_value = re.sub("harvard|\d+|cambridge|massachusetts|\,|hospital|united states of america|department of|boston|huntington|avenue|kresge| ma | usa|brigham and women\’s|medical school|","",title_value)
+        title_value = re.sub("harvard|\d+|cambridge|massachusetts|\,|hospital|united states of america|department of|boston|huntington|avenue|kresge| ma | usa|brigham and women\’s|medical school","",title_value)
         title_value = re.sub("school of [^,]+","",title_value)
         title_value = re.sub(" +"," ",title_value)
         print("REINOS: title_value: " + title_value)
@@ -429,7 +402,7 @@ def attach_authorities(article) :
             middle = nameparts[1]
         url = base_url + 'surname=' + enc(last) + '&givenname=' + enc(first) + "&school=" + enc(school_value) + "&title="+enc(title_value)
 
-        if middle :
+        if middle:
             url+= "&middlename=" + enc(middle)
         dept_value = bulklib.findit("department of ([\w ]+)",afftexts)
         # skip departments for now.
@@ -539,29 +512,19 @@ def assign_article_schools(article,fas_depts) :
     print(article['pmc_depts'])
 
 
-def set_license(article) :
-    # new, new logic (Feb 2014 per Colin and Becky): always LAA
-    article['license'] = 'LAA'
-
-
-def format_first(author,initialize) :
-    # return authors first + middle name or first/middle initials.
-    if initialize :
+def format_first(author,initialize = False) :
+    '''Return authors first + middle name or first/middle initials.'''
+    if initialize:
         first = ""
         if 'first' in author:
-            for part in author['first'].split(" ") :
-                try:
-                    first += part[0]+". "
-                except:
-                    pass
-        return first
+            return " ".join(part[0:1] + "." for part in author['first'].split(" "))
     else:
         return author['first']
 
-def build_citation(article) :
+def build_citation(article):
     # build_citation_new
     citation=""
-    i =1
+    i = 1
     et_al = len(article['authors']) >= 11
     for author in article['authors'] :
         # if 11 or more authors, limit to 7 with "et al"
@@ -570,21 +533,17 @@ def build_citation(article) :
             break
         if author.get('first', None) == None :
             # it's not a person, but a consortium or something -- no first name.
-            citation+= author['last']
+            citation += author['last']
         elif i == 1 :
-            citation+= author['last'] + ", "
-            citation+= format_first(author,et_al) + ", "
+            citation += "{}, {}, ".format(author['last'], format_first(author,et_al))
         else :
             if i == len(article['authors']) :
                 if citation[-4] == ' ' :
                     citation = re.sub(", $","., ",citation)
                 citation += "and "
-            citation+= format_first(author,et_al) + " "
-            citation+= author['last'] + ", "
+            citation+= "{} {}, ".format(format_first(author,et_al), author['last'])
         i+=1
-    citation += ". " + article['date']
-    #citation += ". " + article['title'][0] + article['title'][1:].lower() + ". "
-    citation += ". “" + article['title'] + ".” "
+    citation += ". {}. “{}.” ".format(article['date'], article['title'])
 
     citation += article['journal'] + " "
     citation = re.sub(", \.", ".", citation)
@@ -596,23 +555,14 @@ def build_citation(article) :
         if 'issue' not in article :
             # mimic crossref logic.
             article['issue']='1'
-    if 'issue' in article :
+
+    if 'issue' in article:
         citation += " (" + article['issue'] + ")"
 
-    # removing because inconsistent with dash crossref dates and can't see how they're getting them.
-    #if 'ppub_month' or 'ppub_day' in article :
-    #    citation += " ("
-    #    if 'ppub_month' in article :
-    #        citation += article['ppub_month']
-    #        if 'ppub_day' in article :
-    #            citation += ' ' + article['ppub_day']
-    #    citation += ")"
-
-
-    if 'fpage' in article :
+    if 'fpage' in article:
         fpage  = article['fpage']
         pages = ': ' + fpage
-        if 'lpage' in article :
+        if 'lpage' in article:
             lpage  = article['lpage']
             if lpage != None and fpage != lpage:
                 pages = ': ' + fpage + '-' + lpage
@@ -634,7 +584,7 @@ def build_citation(article) :
 
 
 
-    if 'doi' in article :
+    if 'doi' in article:
         citation += ". doi:" + article['doi']
         citation += ". http://dx.doi.org/" + article['doi']
 
@@ -643,7 +593,6 @@ def build_citation(article) :
     citation = re.sub(" ,",",",citation)
     citation += '.'
 
-    #print("REINOS: AUTHOR COUNT " + str(len(article['authors'])))
     print("REINOS: CITATION: " + citation)
 
     # test a few citations vs. slightly tweaked dash crossref api output.
@@ -658,7 +607,7 @@ def build_citation(article) :
 
     doi2citation['10.4081/hi.2011.e14']="Huffman, Jeff C., Carol A. Mastromauro, Julia K. Boehm, Rita Seabrook, Gregory L. Fricchione, John W. Denninger, and Sonja Lyubomirsky. 2011. “Development of a positive psychology intervention for patients with acute cardiovascular disease.” Heart International 6 (2): e14. doi:10.4081/hi.2011.e14. http://dx.doi.org/10.4081/hi.2011.e14."
 
-    if 'doi' in article and article['doi'] in doi2citation :
+    if 'doi' in article and article['doi'] in doi2citation:
         c = doi2citation[article['doi']]
         if citation == c :
             print("REINOS_SUCCESS")
@@ -689,12 +638,9 @@ def extract_subjects(article_node) :
     for kwd_group_node in findall(article_node,'kwd-group') :
         for kwd_node in findall(kwd_group_node,'kwd') :
             if kwd_node.text not in subjects and kwd_node.text != None :
-                #print("REINOS: keyword in article: " + kwd_node.text)
                 # remove parenthesized numeric subject codes.
                 keyword = re.sub("^\(\d+\.\d+\)","",kwd_node.text)
-                #print("REINOS: clean keyword: " + keyword)
                 subjects.append(keyword)
-
 
     return subjects
 
@@ -708,7 +654,7 @@ def extract_text(node) :
 
 
 def catnode(node):
-    # concatenate text for all subnotes, with whitespace cleanup.
+    '''Concatenate text for all subnotes, with whitespace cleanup.'''
     cattext=""
     for text in node.itertext() :
         text = re.sub("\s+"," ",text)
@@ -726,27 +672,31 @@ def extract_abstract(article_node):
         abstract_node = abstract_nodes[0]
     elif len(abstract_nodes) >= 2 :
         # mulitiple abstracts: take the "normal," unqualified abstract (not the precis, toc etc.)
-        for node in abstract_nodes :
+        for node in abstract_nodes:
             if 'abstract-type' in node.attrib :
-                #if node.attrib['abstract-type'] == 'precis' :
                 print("REINOS: dodging abstract: " + node.attrib['abstract-type'])
             else :
                 print("REINOS: assigning unqualified abstract.")
                 abstract_node = node
 
     abstract = ""
+    regex = re.compile(
+        r"(" + r"|".join(
+            (r"Author Summary", r"Background", r"Case presentation", r"Conclusion", r"Conclusions", r"Conclusions\/Significance",
+             r"Design", "eLife digest", "Findings", "IMPORTANCE", "Introduction",
+             r"Main Outcome Measures?", r"Main Results", r"Methods(?: (?:&|and) (?:(?:(?:Principal )?Findings)|Results))?", r"Methods\/Findings",
+             r"Objectives?", r"Participants", r"Rationale", r"Research Design & Methods", r"Results", "Setting(?: and Participants)?",)
+        ) + r")$") # end regex = assignment
+
     if abstract_node is not None:
         for text in abstract_node.itertext() :
-            abstract+=text
-            if re.match("(Author Summary|Background|Case presentation|Conclusion|Conclusions|Conclusions\/Significance|" +
-                        "Design|eLife digest|Findings|IMPORTANCE|Introduction|" +
-                        "Main Outcome Measure|Main Outcome Measures|Main Results|" +
-                        "Methods|Methods & Findings|Methods and Findings|Methods \& Principal Findings|Methods and Principal Findings|Methods\/Findings|Methods and Results|" +
-                        "Objective|Objectives|Participants|Rationale|Research Design \& Methods|Results|Setting|Setting and Participants)$",text) :
+            abstract += text
+
+            if regex.match(text):
                 # a bit hacky. should really add colon after "title" elements in abstact.
                 abstract+=":"
     abstract = re.sub("\s+"," ",abstract)
-    #print("REINOS: Abstract:" + abstract.strip())
+
     return abstract.strip()
 
 
@@ -754,60 +704,53 @@ def already_in_dash(article,dash_dois,dash_titles,dash_pmcids) :
     # first cut at duplicate detection.
     found = False
     if 'doi' in article and article['doi'] in dash_dois :
-        #print("BAM! Found DOI: " + article['title'])
         found = True
     if article['pmcid'] in dash_pmcids :
-        #print("BAM! Found pmcid: " + article['pmcid'])
         found = True
     if article['title'] in dash_titles :
-        #print("BAM! Found title: " + article['title'])
         found = True
     return found
 
+
 def get_target_collection_dir(article):
-    # build the collection directory name based on ldap schools (converted to dash school naming convention).
-    collection = ""
+    '''build the collection directory name based on LDAP schools with fallback to PMC schools (converted to dash school naming convention).'''
+    schools = []
     for ldap_school in sorted(article['ldap_schools']) :
         if ldap_school in LDAP2DASH_SCHOOL :
-            dash_school = LDAP2DASH_SCHOOL[ldap_school]
-            collection += dash_school
-            collection += "_"
+            schools.append(LDAP2DASH_SCHOOL[ldap_school])
         else:
             print("REINOS: hey! no DASH school for LDAP school: " + ldap_school)
-    collection = re.sub("_$","",collection)
-    collection = re.sub("^_","",collection)
-    if not collection :
+
+    if not schools :
         print("No LDAP schools... let's try PMC schools")
         for pmc_school in sorted(article['pmc_schools']) :
-            dash_school = pmc_school
-            collection += dash_school
-            collection += "_"
-    collection = re.sub("_$","",collection)
-    collection = re.sub("^_","",collection)
+            schools.append(pmc_school)
+
+    collection = "_".join(schools)
     return collection
 
 
-def download_files(article,batch):
+def download_files(article, batch):
     # TODO: replace with FTP
     # TODO: handle non-pdf articles
     # TODO: can there be multiple files?
     pdf_url = "http://www.ncbi.nlm.nih.gov/pmc/articles/PMC" + article['pmcid'] + "/pdf/"
     article['hasversion']=pdf_url
-    file = {}
-    file['url'] = pdf_url
-    file['name'] = article['pmcid']+'.pdf'
+    file = {'url': pdf_url,
+            'name': article['pmcid']+'.pdf'}
+
     cachepath = DATA_DIR + "/batch/"+batch+"/articles"
-    if not os.path.exists(cachepath) :
+    if not os.path.exists(cachepath):
         os.mkdir(cachepath)
     file['cachepath']  =  cachepath+ "/" +file['name']
     errorpath = file['cachepath'] + ".error"
-    if ( os.path.exists(file['cachepath']) or os.path.exists(errorpath) ) :
+    if ( os.path.exists(file['cachepath']) or os.path.exists(errorpath) ):
         print("Article file in cache...");
-    else :
+    else:
         print("Downloading " + file['url'] + " to " + file['cachepath'])
         request = urllib.request.Request(file['url'])
         request.add_header('User-Agent','Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_3; en-US) AppleWebKit/534.3 (KHTML, like Gecko) Chrome/6.0.472.53 Safari/534.3')
-        try :
+        try:
             f = urllib.request.urlopen(request)
             with open(file['cachepath'], "wb") as local_file:
                 local_file.write(f.read())
@@ -819,37 +762,33 @@ def download_files(article,batch):
                 local_file.write('Read: ' + str(e.read))
 
         time.sleep(random.randint(3, 6))
-    if os.path.exists(file['cachepath']) :
+    if os.path.exists(file['cachepath']):
         article['files'].append(file)
 
 
-
-
-def write_output(batch,batch_out_dir,article,article_number) :
-    #print("Batch: " + batch)
+def write_output(batch,batch_out_dir,article,article_number):
     target_collection = get_target_collection_dir(article)
     collection_out_dir = batch_out_dir + "/" + target_collection
     article_out_dir= collection_out_dir +"/"+str(article_number)
-    if not os.path.exists(batch_out_dir) :
-        os.mkdir(batch_out_dir)
-    if not os.path.exists(collection_out_dir) :
-        os.mkdir(collection_out_dir)
-    if not os.path.exists(article_out_dir) :
-        os.mkdir(article_out_dir)
-    #print(article)
+
+    for d in [batch_out_dir, collection_out_dir, article_out_dir]:
+        if not os.path.exists(d):
+            os.mkdir(d)
+
     bulklib.write_dublin_core_meta(article,article_out_dir,batch)
     bulklib.write_dash_meta(article,article_out_dir)
     bulklib.write_contents_file(article,article_out_dir)
+
     for file in article['files'] :
         shutil.copyfile(file['cachepath'], article_out_dir + "/" + file['name'])
     shutil.copyfile(DATA_DIR+"/licenses/" + article['license'] + '/license.txt', article_out_dir+'/license.txt')
 
-def prep_batch_out_dir(batch_out_dir) :
-    if os.path.exists(batch_out_dir) :
+
+def prep_batch_out_dir(batch_out_dir):
+    if os.path.exists(batch_out_dir):
         print("Deleting existing batch_out_dir: " + batch_out_dir)
         shutil.rmtree(batch_out_dir)
     print("Creating batch_out_dir: " + batch_out_dir)
     os.mkdir(batch_out_dir)
-
 
 main()
