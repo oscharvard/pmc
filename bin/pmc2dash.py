@@ -9,8 +9,8 @@ import sys, os
 
 OSCROOT=os.environ['OSCROOT'] #/home/osc
 
-sys.path.append(OSCROOT + '/proj/ingest/lib')
-sys.path.append(OSCROOT + '/common/lib/python3')
+sys.path.append(os.path.join(OSCROOT, '/proj/ingest/lib'))
+sys.path.append(os.path.join(OSCROOT'/common/lib/python3'))
 
 import argparse, glob, json, random, re, shutil, bulklib, time, tsv
 import urllib.request, urllib.parse, urllib.error
@@ -19,8 +19,7 @@ from lxml import etree
 
 AUTHORITY_REPORT=[]
 
-PMC_DIR=OSCROOT + "/proj/pmc"
-DATA_DIR  =PMC_DIR + "/data"
+DATA_DIR = os.path.join(OSCROOT, "proj/pmc/data")
 UNAFFILIATED = 'UNAFFILIATED'
 
 DASH2LDAP_SCHOOL = bulklib.load_dash2ldap_school()
@@ -40,11 +39,11 @@ def main():
 
     print("Processing batch: " + batch)
 
-    base_dir = "{}/batch/{}".format(DATA_DIR, batch)
+    base_dir = os.path.join(DATA_DIR, 'batch', batch)
     print("Base Directory: " + base_dir)
 
-    batch_out_dir = base_dir + "/import"
-    report_dir =    base_dir + "/report"
+    batch_out_dir = os.path.join(base_dir, "import")
+    report_dir =    os.path.join(base_dir, "report")
 
     prep_batch_out_dir(batch_out_dir)
 
@@ -109,7 +108,7 @@ def main():
     write_author_report(report_dir)
 
 def write_author_report(report_dir):
-    pmcid2dashid = tsv.read_map(OSCROOT + '/proj/ingest/data/tsv/pmcid2dashid.tsv')
+    pmcid2dashid = tsv.read_map(os.path.join(OSCROOT, '/proj/ingest/data/tsv/pmcid2dashid.tsv'))
     jsondata={}
     jsondata['data']=[]
     jsondata['timestamp']='2014-02-20 19:36:32'
@@ -410,9 +409,8 @@ def attach_authorities(article):
         if dept_value :
             print("REINOS: got a department!" + dept_value)
             url+= "&department=" + enc(dept_value)
-        print("REINOS: building author huid lookup url : " + url)
-        print("REINOS: fetching this url...")
-        #json_string = urllib.request.urlopen(url).read().decode('utf-8')
+        print("REINOS: fetching author huid lookup url: " + url)
+        # Investigate why this is ISO-8859-1 instead of utf-8
         json_string = urllib.request.urlopen(url).read().decode('ISO-8859-1')
         print("REINOS: got this json string: " + json_string)
         json_authors = json.loads(json_string)['choices']
@@ -740,10 +738,10 @@ def download_files(article, batch):
     file = {'url': pdf_url,
             'name': article['pmcid']+'.pdf'}
 
-    cachepath = DATA_DIR + "/batch/"+batch+"/articles"
+    cachepath = os.path.join(DATA_DIR, "batch", batch, "articles")
     if not os.path.exists(cachepath):
         os.mkdir(cachepath)
-    file['cachepath']  =  cachepath+ "/" +file['name']
+    file['cachepath']  =  os.path.join(cachepath, file['name'])
     errorpath = file['cachepath'] + ".error"
     if ( os.path.exists(file['cachepath']) or os.path.exists(errorpath) ):
         print("Article file in cache...");
@@ -769,8 +767,9 @@ def download_files(article, batch):
 
 def write_output(batch,batch_out_dir,article,article_number):
     target_collection = get_target_collection_dir(article)
-    collection_out_dir = batch_out_dir + "/" + target_collection
-    article_out_dir= collection_out_dir +"/"+str(article_number)
+
+    collection_out_dir = os.path.join(batch_out_dir, target_collection)
+    article_out_dir    = os.path.join(collection_out_dir, str(article_number))
 
     for d in [batch_out_dir, collection_out_dir, article_out_dir]:
         if not os.path.exists(d):
@@ -781,8 +780,8 @@ def write_output(batch,batch_out_dir,article,article_number):
     bulklib.write_contents_file(article,article_out_dir)
 
     for file in article['files'] :
-        shutil.copyfile(file['cachepath'], article_out_dir + "/" + file['name'])
-    shutil.copyfile(DATA_DIR+"/licenses/" + article['license'] + '/license.txt', article_out_dir+'/license.txt')
+        shutil.copyfile(file['cachepath'], os.path.join(article_out_dir, file['name']))
+    shutil.copyfile(os.path.join(DATA_DIR, "licenses", article['license'], 'license.txt'), os.path.join(article_out_dir, 'license.txt'))
 
 
 def prep_batch_out_dir(batch_out_dir):
