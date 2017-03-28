@@ -9,8 +9,8 @@ import sys, os
 
 OSCROOT=os.environ['OSCROOT'] #/home/osc
 
-sys.path.append(os.path.join(OSCROOT, '/proj/ingest/lib'))
-sys.path.append(os.path.join(OSCROOT'/common/lib/python3'))
+sys.path.append(os.path.join(OSCROOT, 'proj/ingest/lib'))
+sys.path.append(os.path.join(OSCROOT, 'common/lib/python3'))
 
 import argparse, glob, json, random, re, shutil, bulklib, time, tsv
 import urllib.request, urllib.parse, urllib.error
@@ -108,7 +108,7 @@ def main():
     write_author_report(report_dir)
 
 def write_author_report(report_dir):
-    pmcid2dashid = tsv.read_map(os.path.join(OSCROOT, '/proj/ingest/data/tsv/pmcid2dashid.tsv'))
+    pmcid2dashid = tsv.read_map(os.path.join(OSCROOT, 'proj/ingest/data/tsv/pmcid2dashid.tsv'))
     jsondata={}
     jsondata['data']=[]
     jsondata['timestamp']='2014-02-20 19:36:32'
@@ -296,7 +296,7 @@ def extract_article(article_node) :
                'type':            extract_type(article_node),
                'pmcid':           extract_pmcid(article_node),
                'files':           [],
-               'issn':            find(article_node,'issn').text,
+               'issn':            find(article_node,'issn').text if find(article_node,'issn') else '',
                'subjects':        extract_subjects(article_node),
                'abstract':        extract_abstract(article_node),
                'affs':            extract_affs(article_node),
