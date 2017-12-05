@@ -24,8 +24,8 @@ def main() :
     args= ap.parse_args()
     year, month = args.year_month
 
-    batch_start_date = "{}-{}_01".format(year, month)
-    batch_end_date   = "{}-{}_{}".format(year, month, str(calendar.monthrange(int(year),int(month))[1]))
+    batch_start_date = "{}-{}-01".format(year, month)
+    batch_end_date   = "{}-{}-{}".format(year, month, str(calendar.monthrange(int(year),int(month))[1]))
     batch_run_date=str(date.today()).replace("-","_")
     batch_id = "pmc{}_{}.{}".format(year, month, batch_run_date)
 
